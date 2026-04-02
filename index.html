@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clicker of Clickers - Evolution</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            user-select: none; 
+            background: #0f172a; 
+            min-height: 100vh;
+        }
+        .click-animation { animation: click-scale 0.1s ease-out; }
+        @keyframes click-scale { 0% { transform: scale(1); } 50% { transform: scale(0.92); } 100% { transform: scale(1); } }
+        .particle { position: absolute; pointer-events: none; animation: float-up 0.8s ease-out forwards; z-index: 50; font-weight: bold; }
+        @keyframes float-up { 0% { transform: translateY(0) opacity: 1; } 100% { transform: translateY(-80px) opacity: 0; } }
+        .upgrade-card { transition: all 0.2s; position: relative; }
+        .upgrade-card * { pointer-events: none; } /* Garante que o clique ignore os textos e vá para o card */
+        .upgrade-card:active { transform: scale(0.98); }
+        .disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); pointer-events: none !important; }
+        .modal-bg { background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        /* Layout Fix for scrolling */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        @media (min-width: 1024px) {
+            .main-container {
+                flex-direction: row;
+                height: 100vh;
+                overflow: hidden;
+            }
+            .scrollable-area {
+                height: 100%;
+                overflow-y: auto;
+            }
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <!-- Tela de Login / Perfil -->
+    <div id="login-modal" class="fixed inset-0 z-[100] modal-bg flex items-center justify-center p-4">
+        <div class="bg-slate-800 p-8 rounded-3xl w-full max-w-md border border-slate-700 shadow-2xl text-center">
+            <h2 class="text-3xl font-black mb-6 uppercase tracking-tighter" id="t-login-title">Configurar Perfil</h2>
+            <div class="flex justify-center mb-6">
+                <div id="avatar-preview" class="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-4xl border-4 border-slate-600">👤</div>
+            </div>
+            <input type="text" id="username-input" placeholder="Seu nome..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-4 text-center focus:ring-2 focus:ring-blue-500 outline-none">
+            <input type="text" id="avatar-input" placeholder="URL da foto ou Emoji..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 text-center focus:ring-2 focus:ring-blue-500 outline-none">
+            
+            <div class="flex gap-2 mb-6 justify-center">
+                <button onclick="setLang('pt')" class="px-3 py-1 bg-slate-700 rounded-lg text-sm border hover:border-blue-500 transition" id="btn-pt">PT</button>
+                <button onclick="setLang('en')" class="px-3 py-1 bg-slate-700 rounded-lg text-sm border hover:border-blue-500 transition" id="btn-en">EN</button>
+                <button onclick="setLang('es')" class="px-3 py-1 bg-slate-700 rounded-lg text-sm border hover:border-blue-500 transition" id="btn-es">ES</button>
+            </div>
+
+            <button onclick="saveProfile()" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold uppercase transition" id="t-start-btn">Começar Jogo</button>
+        </div>
+    </div>
+
+    <!-- UI Principal -->
+    <div class="main-container">
+        
+        <!-- Sidebar Esquerda (Perfil e Prestígio) -->
+        <div class="w-full lg:w-72 bg-slate-900/50 p-6 border-r border-white/5 flex flex-col gap-6 lg:h-full lg:overflow-y-auto">
+            <div class="flex items-center gap-4">
+                <div id="user-avatar" class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-2xl overflow-hidden shrink-0"></div>
+                <div class="overflow-hidden">
+                    <p id="user-name" class="font-bold leading-none truncate text-ellipsis">Jogador</p>
+                    <p id="t-rank" class="text-xs text-blue-400 mt-1 uppercase font-semibold">Recruta</p>
+                </div>
+            </div>
+
+            <div class="bg-blue-900/20 p-4 rounded-2xl border border-blue-500/30">
+                <p class="text-xs text-blue-300 uppercase font-bold" id="t-prestige-label">Nível de Prestígio</p>
+                <p id="prestige-val" class="text-3xl font-black text-blue-400">0</p>
+                <p class="text-[10px] text-blue-300/60 mt-1" id="t-prestige-desc">Multiplicador: x1.0</p>
+                <button onclick="openPrestigeModal()" class="mt-4 w-full bg-blue-600/40 hover:bg-blue-600 p-2 rounded-lg text-xs font-bold transition uppercase" id="t-prestige-btn">Prestigiar</button>
+            </div>
+
+            <div class="mt-4 lg:mt-auto space-y-2">
+                <button onclick="document.getElementById('login-modal').classList.remove('hidden')" class="w-full text-xs text-slate-500 hover:text-white transition" id="t-edit-profile">Editar Perfil</button>
+                <button onclick="resetGame(true)" class="w-full text-xs text-red-900 hover:text-red-500 transition" id="t-reset-btn">Resetar Tudo</button>
+            </div>
+        </div>
+
+        <!-- Área Central (Clique Principal) -->
+        <div class="flex-1 flex flex-col items-center justify-center p-6 relative lg:h-full overflow-y-auto scrollable-area py-12 lg:py-6">
+            <div class="text-center mb-8">
+                <div id="score-display" class="text-6xl md:text-7xl lg:text-9xl font-black text-white drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]">0</div>
+                <p class="text-blue-400 mt-2 text-lg lg:text-xl font-medium tracking-wide"><span id="pps-display">0</span> <span id="t-unit">PONTOS / SEG</span></p>
+            </div>
+
+            <button id="main-clicker" class="relative group w-48 h-48 md:w-56 md:h-56 lg:w-72 lg:h-72 rounded-full border-[8px] md:border-[12px] border-slate-800 shadow-2xl transition-all flex items-center justify-center active:scale-90 bg-slate-900 hover:bg-slate-800 overflow-hidden shrink-0">
+                <div class="absolute inset-0 bg-blue-600/10 group-hover:bg-blue-600/20 transition-colors"></div>
+                <div class="flex flex-col items-center relative z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500 mb-2 scale-75 md:scale-100"><path d="M14 4.1 12 2 10 4.1"/><path d="m5.1 8-2.9-.8"/><path d="m18.9 8 2.9-.8"/><path d="M12 22a7 7 0 0 0 7-7V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v10a7 7 0 0 0 7 7Z"/></svg>
+                    <span id="click-text" class="font-black text-xl lg:text-2xl text-white">+1</span>
+                </div>
+            </button>
+            
+            <div class="mt-8 lg:mt-12 flex gap-6 lg:gap-8 text-center text-slate-500">
+                <div><p class="text-xs uppercase font-bold" id="t-stat-clickers">Clickers</p><p id="stat-count" class="text-xl font-bold text-slate-300">0</p></div>
+                <div><p class="text-xs uppercase font-bold" id="t-stat-power">Força</p><p id="stat-power" class="text-xl font-bold text-slate-300">1</p></div>
+            </div>
+        </div>
+
+        <!-- Painel de Upgrades -->
+        <div class="w-full lg:w-[400px] bg-slate-900/80 p-6 border-t lg:border-t-0 lg:border-l border-white/5 shadow-inner lg:h-full overflow-y-auto scrollable-area">
+            <h2 class="text-xl font-black mb-6 flex items-center gap-2 uppercase tracking-widest" id="t-upgrade-title">🚀 Melhorias</h2>
+            <div id="upgrades-container" class="flex flex-col gap-3"></div>
+            <div class="h-10"></div>
+        </div>
+    </div>
+
+    <!-- Modal de Prestígio -->
+    <div id="prestige-modal" class="fixed inset-0 z-[110] modal-bg flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 p-8 rounded-3xl w-full max-w-lg border border-blue-500/50 shadow-[0_0_50px_rgba(59,130,246,0.3)] text-center">
+            <h2 class="text-4xl font-black mb-4 text-blue-400 uppercase italic" id="t-pres-modal-title">Ascensão</h2>
+            <p class="text-slate-300 mb-6" id="t-pres-modal-desc">Você perderá todos os seus pontos, clickers e níveis de melhorias atuais em troca de um BÔNUS PERMANENTE de produção.</p>
+            
+            <div class="bg-slate-900 p-6 rounded-2xl mb-8 flex justify-around">
+                <div>
+                    <p class="text-xs text-slate-500 uppercase font-bold" id="t-pres-current">Bônus Atual</p>
+                    <p id="pres-curr-val" class="text-2xl font-bold">x1.0</p>
+                </div>
+                <div class="text-blue-500 flex items-center">➡️</div>
+                <div>
+                    <p class="text-xs text-slate-500 uppercase font-bold" id="t-pres-new">Novo Bônus</p>
+                    <p id="pres-new-val" class="text-2xl font-bold text-blue-400 italic">x2.0</p>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="closePrestigeModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 p-4 rounded-xl font-bold transition" id="t-cancel">Cancelar</button>
+                <button id="confirm-prestige-btn" onclick="doPrestige()" class="flex-1 bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg shadow-blue-500/20 disabled" id="t-confirm">Prestigiar</button>
+            </div>
+            <p id="prestige-warning" class="mt-4 text-xs text-red-400 font-bold hidden" id="t-pres-warning">Você precisa de pelo menos 1 milhão de pontos!</p>
+        </div>
+    </div>
+
+    <script>
+        const i18n = {
+            pt: {
+                loginTitle: "Configurar Perfil",
+                startBtn: "Começar Jogo",
+                rank: "Recruta",
+                prestigeLabel: "Nível de Prestígio",
+                prestigeBtn: "Prestigiar",
+                editProfile: "Editar Perfil",
+                resetBtn: "Resetar Tudo",
+                unit: "PONTOS / SEG",
+                statClickers: "Clickers",
+                statPower: "Força",
+                upgradeTitle: "🚀 Melhorias",
+                presModalTitle: "Ascensão",
+                presModalDesc: "Você perderá pontos e clickers em troca de um bônus PERMANENTE.",
+                presCurrent: "Bônus Atual",
+                presNew: "Novo Bônus",
+                cancel: "Cancelar",
+                confirm: "Confirmar",
+                presWarning: "Necessário 1.000.000 de pontos!",
+                upgrades: [
+                    ["Overclock", "Aumenta a força dos clickers."],
+                    ["Sincronia Lunar", "Cliques manuais geram mais clickers."],
+                    ["Fábrica", "Gera clickers automaticamente."],
+                    ["Chip de Silício", "Clickers produzem +10% de bônus."],
+                    ["Crítico Quântico", "Chance de cliques valerem 10x."],
+                    ["Energia Solar", "Produção aumenta levemente ao logar."],
+                    ["Nanotecnologia", "Clickers ficam 20% mais baratos."],
+                    ["IA Avançada", "Auto-clicker inteligente."],
+                    ["Portal de Dados", "Multiplica produção global."],
+                    ["Matriz Infinita", "Clickers geram outros clickers."]
+                ]
+            },
+            en: {
+                loginTitle: "Setup Profile",
+                startBtn: "Start Game",
+                rank: "Recruit",
+                prestigeLabel: "Prestige Level",
+                prestigeBtn: "Prestige",
+                editProfile: "Edit Profile",
+                resetBtn: "Reset All",
+                unit: "POINTS / SEC",
+                statClickers: "Clickers",
+                statPower: "Power",
+                upgradeTitle: "🚀 Upgrades",
+                presModalTitle: "Ascension",
+                presModalDesc: "You will lose points and clickers for a PERMANENT production bonus.",
+                presCurrent: "Current Bonus",
+                presNew: "New Bonus",
+                cancel: "Cancel",
+                confirm: "Confirm",
+                presWarning: "Need 1,000,000 points!",
+                upgrades: [
+                    ["Overclock", "Increase clicker strength."],
+                    ["Moon Sync", "Manual clicks yield more clickers."],
+                    ["Factory", "Auto-generate clickers."],
+                    ["Silicon Chip", "Clickers yield +10% bonus."],
+                    ["Quantum Crit", "Chance for 10x clicks."],
+                    ["Solar Energy", "Production increases on login."],
+                    ["Nanotech", "Clickers are 20% cheaper."],
+                    ["Advanced AI", "Smart auto-clicker."],
+                    ["Data Portal", "Multiplies global production."],
+                    ["Infinite Matrix", "Clickers generate clickers."]
+                ]
+            },
+            es: {
+                loginTitle: "Configurar Perfil",
+                startBtn: "Empezar Juego",
+                rank: "Recluta",
+                prestigeLabel: "Nivel de Prestigio",
+                prestigeBtn: "Prestigio",
+                editProfile: "Editar Perfil",
+                resetBtn: "Reiniciar Todo",
+                unit: "PUNTOS / SEG",
+                statClickers: "Clickers",
+                statPower: "Fuerza",
+                upgradeTitle: "🚀 Mejoras",
+                presModalTitle: "Ascensión",
+                presModalDesc: "Perderás puntos y clickers a cambio de un bono PERMANENTE.",
+                presCurrent: "Bono Actual",
+                presNew: "Nuevo Bono",
+                cancel: "Cancelar",
+                confirm: "Confirmar",
+                presWarning: "¡Necesitas 1.000.000 de puntos!",
+                upgrades: [
+                    ["Overclock", "Mejora la fuerza de clickers."],
+                    ["Sincronía Lunar", "Clicks manuales dan más clickers."],
+                    ["Fábrica", "Genera clickers automáticamente."],
+                    ["Chip de Silicio", "Clickers dan +10% de bono."],
+                    ["Crítico Cuántico", "Probabilidad de 10x clicks."],
+                    ["Energía Solar", "Producción aumenta al entrar."],
+                    ["Nanotecnología", "Clickers son 20% más baratos."],
+                    ["IA Avanzada", "Auto-clicker inteligente."],
+                    ["Portal de Dados", "Multiplica produção global."],
+                    ["Matriz Infinita", "Clickers generan clickers."]
+                ]
+            }
+        };
+
+        let state = {
+            username: "Jogador",
+            avatar: "👤",
+            lang: "pt",
+            score: 0,
+            totalClickers: 0,
+            clickerPower: 1,
+            prestige: 0,
+            prestigeMultiplier: 1.0,
+            upgrades: new Array(10).fill(0),
+            lastTick: Date.now()
+        };
+
+        const config = {
+            baseCosts: [50, 250, 1000, 5000, 20000, 100000, 500000, 2000000, 10000000, 50000000],
+            multipliers: [1.5, 2.1, 1.6, 1.8, 2.5, 3.0, 1.4, 2.0, 5.0, 10.0]
+        };
+
+        function setLang(l) {
+            state.lang = l;
+            ['pt', 'en', 'es'].forEach(btn => {
+                const b = document.getElementById(`btn-${btn}`);
+                if (b) b.classList.toggle('border-blue-500', btn === l);
+            });
+            translateUI();
+        }
+
+        function translateUI() {
+            const t = i18n[state.lang];
+            const ids = ['t-login-title', 't-start-btn', 't-rank', 't-prestige-label', 't-prestige-btn', 't-edit-profile', 't-reset-btn', 't-unit', 't-stat-clickers', 't-stat-power', 't-upgrade-title', 't-pres-modal-title', 't-pres-modal-desc', 't-pres-current', 't-pres-new', 't-cancel', 't-confirm', 't-pres-warning'];
+            
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = t[id.replace('t-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase())];
+            });
+            
+            renderUpgrades();
+        }
+
+        function saveProfile() {
+            const nameInput = document.getElementById('username-input').value;
+            const avatarInput = document.getElementById('avatar-input').value;
+            if(nameInput) state.username = nameInput;
+            if(avatarInput) state.avatar = avatarInput;
+            
+            document.getElementById('user-name').innerText = state.username;
+            const avatarDiv = document.getElementById('user-avatar');
+            if(state.avatar.includes('http')) {
+                avatarDiv.innerHTML = `<img src="${state.avatar}" class="w-full h-full object-cover">`;
+            } else {
+                avatarDiv.innerText = state.avatar || "👤";
+            }
+            
+            document.getElementById('login-modal').classList.add('hidden');
+            saveGame();
+        }
+
+        function renderUpgrades() {
+            const container = document.getElementById('upgrades-container');
+            const t = i18n[state.lang];
+            
+            state.upgrades.forEach((level, i) => {
+                const cost = Math.floor(config.baseCosts[i] * Math.pow(config.multipliers[i], level));
+                let div = document.getElementById(`upgrade-btn-${i}`);
+                
+                if (!div) {
+                    div = document.createElement('div');
+                    div.id = `upgrade-btn-${i}`;
+                    // Atribui o clique diretamente ao container principal do upgrade
+                    div.onclick = (e) => {
+                        // Recalcula o custo no momento do clique para evitar bugs de dessincronização
+                        const currentCost = Math.floor(config.baseCosts[i] * Math.pow(config.multipliers[i], state.upgrades[i]));
+                        buyUpgrade(i, currentCost);
+                    };
+                    container.appendChild(div);
+                }
+                
+                div.className = `upgrade-card p-4 bg-slate-800/50 rounded-2xl border border-white/5 flex justify-between items-center cursor-pointer ${state.score < cost ? 'disabled' : ''}`;
+                
+                div.innerHTML = `
+                    <div class="flex-1 overflow-hidden pr-2">
+                        <p class="font-bold text-blue-400 text-sm md:text-base truncate">${t.upgrades[i][0]}</p>
+                        <p class="text-[10px] text-slate-400 leading-tight line-clamp-2">${t.upgrades[i][1]}</p>
+                        <p class="text-[10px] mt-1 font-mono text-blue-500 uppercase">Lvl ${level}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="font-black text-sm md:text-base text-white">${formatNum(cost)}</p>
+                    </div>
+                `;
+            });
+        }
+
+        function formatNum(n) {
+            if (n >= 1e12) return (n/1e12).toFixed(2) + 'T';
+            if (n >= 1e9) return (n/1e9).toFixed(2) + 'B';
+            if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+            if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+            return Math.floor(n);
+        }
+
+        function buyUpgrade(index, cost) {
+            if(state.score >= cost) {
+                state.score -= cost;
+                state.upgrades[index]++;
+                applyUpgrades();
+                renderUpgrades();
+                updateUI();
+            }
+        }
+
+        function applyUpgrades() {
+            state.clickerPower = 1 + state.upgrades[0]; 
+        }
+
+        function handleMainClick(e) {
+            const clickMult = 1 + state.upgrades[1]; 
+            let gain = clickMult;
+            
+            if(Math.random() < (state.upgrades[4] * 0.05)) {
+                gain *= 10;
+                createParticle(e.clientX, e.clientY, "CRITICAL!", "text-yellow-400 text-3xl");
+            }
+
+            state.totalClickers += gain;
+            createParticle(e.clientX, e.clientY, `+${formatNum(gain)} Clicker`, "text-blue-400");
+            
+            const btn = document.getElementById('main-clicker');
+            btn.classList.add('click-animation');
+            setTimeout(() => btn.classList.remove('click-animation'), 100);
+            updateUI();
+        }
+
+        function createParticle(x, y, text, colorClass) {
+            const p = document.createElement('div');
+            p.className = `particle ${colorClass}`;
+            p.style.left = (x - 20) + 'px';
+            p.style.top = (y - 20) + 'px';
+            p.innerText = text;
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 800);
+        }
+
+        function openPrestigeModal() {
+            document.getElementById('pres-curr-val').innerText = `x${state.prestigeMultiplier.toFixed(1)}`;
+            document.getElementById('pres-new-val').innerText = `x${(state.prestigeMultiplier + (state.score / 1000000)).toFixed(1)}`;
+            
+            const canPrestige = state.score >= 1000000;
+            const confirmBtn = document.getElementById('confirm-prestige-btn');
+            const warning = document.getElementById('prestige-warning');
+            
+            if(canPrestige) {
+                confirmBtn.classList.remove('disabled', 'opacity-50');
+                warning.classList.add('hidden');
+            } else {
+                confirmBtn.classList.add('disabled', 'opacity-50');
+                warning.classList.remove('hidden');
+            }
+            
+            document.getElementById('prestige-modal').classList.remove('hidden');
+        }
+
+        function closePrestigeModal() {
+            document.getElementById('prestige-modal').classList.add('hidden');
+        }
+
+        function doPrestige() {
+            if(state.score < 1000000) return;
+            const bonusEarned = state.score / 1000000;
+            state.prestigeMultiplier += bonusEarned;
+            state.prestige++;
+            resetGame(false); 
+            closePrestigeModal();
+            saveGame();
+        }
+
+        function resetGame(full) {
+            state.score = 0;
+            state.totalClickers = 0;
+            state.upgrades = new Array(10).fill(0);
+            state.clickerPower = 1;
+            
+            if(full) {
+                state.prestige = 0;
+                state.prestigeMultiplier = 1.0;
+                localStorage.removeItem('clicker_evo_save_v3');
+                location.reload();
+            }
+            renderUpgrades();
+            updateUI();
+        }
+
+        function saveGame() {
+            localStorage.setItem('clicker_evo_save_v3', JSON.stringify(state));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('clicker_evo_save_v3') || localStorage.getItem('clicker_evo_save_v2');
+            if(saved) {
+                const loaded = JSON.parse(saved);
+                state = { ...state, ...loaded };
+                setLang(state.lang);
+                saveProfile(); 
+                applyUpgrades();
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('score-display').innerText = formatNum(state.score);
+            document.getElementById('pps-display').innerText = formatNum(state.totalClickers * state.clickerPower * state.prestigeMultiplier);
+            document.getElementById('stat-count').innerText = formatNum(state.totalClickers);
+            document.getElementById('stat-power').innerText = formatNum(state.clickerPower);
+            const pVal = document.getElementById('prestige-val');
+            if (pVal) pVal.innerText = state.prestige;
+            const pDesc = document.getElementById('t-prestige-desc');
+            if (pDesc) pDesc.innerText = `Multiplicador: x${state.prestigeMultiplier.toFixed(1)}`;
+            
+            renderUpgrades();
+        }
+
+        function init() {
+            loadGame();
+            const mainClicker = document.getElementById('main-clicker');
+            if (mainClicker) mainClicker.onclick = handleMainClick;
+            setInterval(saveGame, 10000);
+
+            function loop() {
+                const now = Date.now();
+                const dt = (now - state.lastTick) / 1000;
+                state.lastTick = now;
+
+                const pps = (state.totalClickers * state.clickerPower) * state.prestigeMultiplier;
+                state.score += pps * dt;
+
+                state.totalClickers += (state.upgrades[2] * 0.1) * dt;
+
+                if(state.upgrades[9] > 0) {
+                    state.totalClickers += (state.totalClickers * 0.01 * state.upgrades[9]) * dt;
+                }
+
+                updateUI();
+                requestAnimationFrame(loop);
+            }
+            requestAnimationFrame(loop);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
