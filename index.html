@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Clicker of Clickers - Evolution</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -12,259 +12,254 @@
             user-select: none; 
             background: #0f172a; 
             min-height: 100vh;
+            overflow-x: hidden;
+            touch-action: manipulation;
         }
-        .click-animation { animation: click-scale 0.1s ease-out; }
-        @keyframes click-scale { 0% { transform: scale(1); } 50% { transform: scale(0.92); } 100% { transform: scale(1); } }
-        .particle { position: absolute; pointer-events: none; animation: float-up 0.8s ease-out forwards; z-index: 50; font-weight: bold; }
-        @keyframes float-up { 0% { transform: translateY(0) opacity: 1; } 100% { transform: translateY(-80px) opacity: 0; } }
-        .upgrade-card { transition: all 0.2s; position: relative; }
-        .upgrade-card * { pointer-events: none; } /* Garante que o clique ignore os textos e vá para o card */
-        .upgrade-card:active { transform: scale(0.98); }
+    
+        /* Animação de clique corrigida */
+        .click-active { transform: scale(0.95) !important; transition: transform 0.05s; }
+        
+        .particle { position: absolute; pointer-events: none; animation: float-up 0.8s ease-out forwards; z-index: 100; font-weight: bold; }
+        @keyframes float-up { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-80px); opacity: 0; } }
+        
+        .upgrade-card { 
+            transition: transform 0.1s, border-color 0.2s; 
+            position: relative; 
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Bloqueia interferência interna */
+        .upgrade-card * { pointer-events: none; }
+        
         .disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); pointer-events: none !important; }
+        
         .modal-bg { background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); }
         
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         
-        /* Layout Fix for scrolling */
-        .main-container {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+        .main-container { display: flex; flex-direction: column; min-height: 100vh; }
         @media (min-width: 1024px) {
-            .main-container {
-                flex-direction: row;
-                height: 100vh;
-                overflow: hidden;
-            }
-            .scrollable-area {
-                height: 100%;
-                overflow-y: auto;
-            }
+            .main-container { flex-direction: row; height: 100vh; overflow: hidden; }
+            .scrollable-area { height: 100%; overflow-y: auto; }
         }
+
+        .tab-active { border-bottom: 3px solid #3b82f6; color: white; }
+        .super-gradient { background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%); }
     </style>
 </head>
 <body class="text-white">
 
-    <!-- Tela de Login / Perfil -->
+    <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 z-[100] modal-bg flex items-center justify-center p-4">
         <div class="bg-slate-800 p-8 rounded-3xl w-full max-w-md border border-slate-700 shadow-2xl text-center">
             <h2 class="text-3xl font-black mb-6 uppercase tracking-tighter" id="t-login-title">Configurar Perfil</h2>
             <div class="flex justify-center mb-6">
-                <div id="avatar-preview" class="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-4xl border-4 border-slate-600">👤</div>
+                <div id="avatar-preview" class="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-4xl border-4 border-slate-600 overflow-hidden">👤</div>
             </div>
-            <input type="text" id="username-input" placeholder="Seu nome..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-4 text-center focus:ring-2 focus:ring-blue-500 outline-none">
-            <input type="text" id="avatar-input" placeholder="URL da foto ou Emoji..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 text-center focus:ring-2 focus:ring-blue-500 outline-none">
+            <input type="text" id="username-input" placeholder="Seu nome..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-4 text-center outline-none">
+            <input type="text" id="avatar-input" placeholder="URL da foto ou Emoji..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 text-center outline-none">
             
             <div class="flex gap-2 mb-6 justify-center">
-                <button onclick="setLang('pt')" class="px-3 py-1 bg-slate-700 rounded-lg text-sm border hover:border-blue-500 transition" id="btn-pt">PT</button>
-                <button onclick="setLang('en')" class="px-3 py-1 bg-slate-700 rounded-lg text-sm border hover:border-blue-500 transition" id="btn-en">EN</button>
-                <button onclick="setLang('es')" class="px-3 py-1 bg-slate-700 rounded-lg text-sm border hover:border-blue-500 transition" id="btn-es">ES</button>
+                <button onpointerdown="setLang('pt')" class="px-3 py-1 bg-slate-700 rounded-lg text-sm border hover:border-blue-500 transition" id="btn-pt">PT</button>
+                <button onpointerdown="setLang('en')" class="px-3 py-1 bg-slate-700 rounded-lg text-sm border hover:border-blue-500 transition" id="btn-en">EN</button>
+                <button onpointerdown="setLang('es')" class="px-3 py-1 bg-slate-700 rounded-lg text-sm border hover:border-blue-500 transition" id="btn-es">ES</button>
             </div>
 
-            <button onclick="saveProfile()" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold uppercase transition" id="t-start-btn">Começar Jogo</button>
+            <button onpointerdown="saveProfile()" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold uppercase transition" id="t-start-btn">Começar Jogo</button>
         </div>
     </div>
 
-    <!-- UI Principal -->
     <div class="main-container">
         
-        <!-- Sidebar Esquerda (Perfil e Prestígio) -->
-        <div class="w-full lg:w-72 bg-slate-900/50 p-6 border-r border-white/5 flex flex-col gap-6 lg:h-full lg:overflow-y-auto">
+        <!-- Sidebar -->
+        <div class="w-full lg:w-72 bg-slate-900/50 p-6 border-r border-white/5 flex flex-col gap-4 lg:h-full lg:overflow-y-auto">
             <div class="flex items-center gap-4">
-                <div id="user-avatar" class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-2xl overflow-hidden shrink-0"></div>
+                <div id="user-avatar" class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-2xl overflow-hidden shrink-0">👤</div>
                 <div class="overflow-hidden">
-                    <p id="user-name" class="font-bold leading-none truncate text-ellipsis">Jogador</p>
-                    <p id="t-rank" class="text-xs text-blue-400 mt-1 uppercase font-semibold">Recruta</p>
+                    <p id="user-name" class="font-bold leading-none truncate">Jogador</p>
+                    <p class="text-xs text-blue-400 mt-1 uppercase font-semibold" id="t-rank">Recruta</p>
                 </div>
             </div>
 
             <div class="bg-blue-900/20 p-4 rounded-2xl border border-blue-500/30">
-                <p class="text-xs text-blue-300 uppercase font-bold" id="t-prestige-label">Nível de Prestígio</p>
-                <p id="prestige-val" class="text-3xl font-black text-blue-400">0</p>
-                <p class="text-[10px] text-blue-300/60 mt-1" id="t-prestige-desc">Multiplicador: x1.0</p>
-                <button onclick="openPrestigeModal()" class="mt-4 w-full bg-blue-600/40 hover:bg-blue-600 p-2 rounded-lg text-xs font-bold transition uppercase" id="t-prestige-btn">Prestigiar</button>
+                <p class="text-[10px] text-blue-300 uppercase font-bold" id="t-prestige-label">Prestígio Normal</p>
+                <p id="prestige-val" class="text-2xl font-black text-blue-400">0</p>
+                <p id="prestige-mult-display" class="text-[10px] text-blue-300/60 mt-1">Bônus: x1.0</p>
+                <button onpointerdown="openPrestigeModal()" class="mt-3 w-full bg-blue-600/40 hover:bg-blue-600 p-2 rounded-lg text-xs font-bold transition uppercase" id="t-prestige-btn">Prestigiar</button>
             </div>
 
-            <div class="mt-4 lg:mt-auto space-y-2">
-                <button onclick="document.getElementById('login-modal').classList.remove('hidden')" class="w-full text-xs text-slate-500 hover:text-white transition" id="t-edit-profile">Editar Perfil</button>
-                <button onclick="resetGame(true)" class="w-full text-xs text-red-900 hover:text-red-500 transition" id="t-reset-btn">Resetar Tudo</button>
+            <div id="super-prestige-card" class="super-gradient p-4 rounded-2xl border border-white/20 shadow-lg">
+                <p class="text-[10px] text-white uppercase font-bold" id="t-super-label">Prestígio Total</p>
+                <p id="super-prestige-val" class="text-2xl font-black text-white">0</p>
+                <p id="super-mult-display" class="text-[10px] text-white/80 mt-1">Mult. Global: x1.0</p>
+                <button onpointerdown="doSuperPrestige()" id="super-prestige-btn" class="mt-3 w-full bg-white/20 hover:bg-white/40 p-2 rounded-lg text-xs font-bold transition uppercase disabled">Super Prestígio</button>
+                <p id="super-req" class="text-[9px] text-white/60 mt-2 text-center italic">Requer Mult. x50</p>
+            </div>
+
+            <div class="mt-auto space-y-2">
+                <button onpointerdown="document.getElementById('login-modal').classList.remove('hidden')" class="w-full text-xs text-slate-500 hover:text-white transition" id="t-edit-profile">Editar Perfil</button>
+                <button onpointerdown="resetGame(true)" class="w-full text-xs text-red-900 hover:text-red-500 transition" id="t-reset-btn">Resetar Tudo</button>
             </div>
         </div>
 
-        <!-- Área Central (Clique Principal) -->
-        <div class="flex-1 flex flex-col items-center justify-center p-6 relative lg:h-full overflow-y-auto scrollable-area py-12 lg:py-6">
-            <div class="text-center mb-8">
-                <div id="score-display" class="text-6xl md:text-7xl lg:text-9xl font-black text-white drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]">0</div>
-                <p class="text-blue-400 mt-2 text-lg lg:text-xl font-medium tracking-wide"><span id="pps-display">0</span> <span id="t-unit">PONTOS / SEG</span></p>
+        <!-- Central Clicker -->
+        <div class="flex-1 flex flex-col items-center justify-center p-6 relative lg:h-full overflow-y-auto scrollable-area">
+            <div class="text-center mb-8 pointer-events-none">
+                <div id="score-display" class="text-6xl md:text-8xl font-black text-white drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]">0</div>
+                <p class="text-blue-400 mt-2 text-lg font-medium"><span id="pps-display">0</span> <span id="t-unit">PONTOS / SEG</span></p>
             </div>
 
-            <button id="main-clicker" class="relative group w-48 h-48 md:w-56 md:h-56 lg:w-72 lg:h-72 rounded-full border-[8px] md:border-[12px] border-slate-800 shadow-2xl transition-all flex items-center justify-center active:scale-90 bg-slate-900 hover:bg-slate-800 overflow-hidden shrink-0">
-                <div class="absolute inset-0 bg-blue-600/10 group-hover:bg-blue-600/20 transition-colors"></div>
-                <div class="flex flex-col items-center relative z-10">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500 mb-2 scale-75 md:scale-100"><path d="M14 4.1 12 2 10 4.1"/><path d="m5.1 8-2.9-.8"/><path d="m18.9 8 2.9-.8"/><path d="M12 22a7 7 0 0 0 7-7V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v10a7 7 0 0 0 7 7Z"/></svg>
-                    <span id="click-text" class="font-black text-xl lg:text-2xl text-white">+1</span>
+            <button id="main-clicker" class="relative group w-48 h-48 md:w-64 md:h-64 rounded-full border-[12px] border-slate-800 shadow-2xl transition-all flex items-center justify-center bg-slate-900 hover:bg-slate-800 overflow-hidden">
+                <div class="absolute inset-0 bg-blue-600/10 group-hover:bg-blue-600/20 pointer-events-none"></div>
+                <div class="flex flex-col items-center relative z-10 pointer-events-none">
+                    <span id="click-text" class="font-black text-3xl text-white">+1</span>
                 </div>
             </button>
             
-            <div class="mt-8 lg:mt-12 flex gap-6 lg:gap-8 text-center text-slate-500">
+            <div class="mt-8 flex gap-8 text-center text-slate-500 pointer-events-none">
                 <div><p class="text-xs uppercase font-bold" id="t-stat-clickers">Clickers</p><p id="stat-count" class="text-xl font-bold text-slate-300">0</p></div>
                 <div><p class="text-xs uppercase font-bold" id="t-stat-power">Força</p><p id="stat-power" class="text-xl font-bold text-slate-300">1</p></div>
             </div>
         </div>
 
-        <!-- Painel de Upgrades -->
-        <div class="w-full lg:w-[400px] bg-slate-900/80 p-6 border-t lg:border-t-0 lg:border-l border-white/5 shadow-inner lg:h-full overflow-y-auto scrollable-area">
-            <h2 class="text-xl font-black mb-6 flex items-center gap-2 uppercase tracking-widest" id="t-upgrade-title">🚀 Melhorias</h2>
-            <div id="upgrades-container" class="flex flex-col gap-3"></div>
-            <div class="h-10"></div>
+        <!-- Upgrades Panel -->
+        <div class="w-full lg:w-[400px] bg-slate-900/80 border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col lg:h-full">
+            <div class="flex border-b border-white/10 shrink-0">
+                <button onpointerdown="setTab('normal')" id="tab-normal" class="flex-1 p-4 font-bold text-sm uppercase tracking-wider tab-active">Normal</button>
+                <button onpointerdown="setTab('elite')" id="tab-elite" class="flex-1 p-4 font-bold text-sm uppercase tracking-wider text-slate-500 hidden">Elite & Super</button>
+            </div>
+            <div id="upgrades-container" class="p-6 flex flex-col gap-3 overflow-y-auto scrollable-area flex-1"></div>
         </div>
     </div>
 
-    <!-- Modal de Prestígio -->
+    <!-- Prestige Modal -->
     <div id="prestige-modal" class="fixed inset-0 z-[110] modal-bg flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-800 p-8 rounded-3xl w-full max-w-lg border border-blue-500/50 shadow-[0_0_50px_rgba(59,130,246,0.3)] text-center">
-            <h2 class="text-4xl font-black mb-4 text-blue-400 uppercase italic" id="t-pres-modal-title">Ascensão</h2>
-            <p class="text-slate-300 mb-6" id="t-pres-modal-desc">Você perderá todos os seus pontos, clickers e níveis de melhorias atuais em troca de um BÔNUS PERMANENTE de produção.</p>
-            
+        <div class="bg-slate-800 p-8 rounded-3xl w-full max-w-lg border border-blue-500/50 text-center">
+            <h2 class="text-4xl font-black mb-4 text-blue-400 uppercase italic" id="t-pres-title">Ascensão</h2>
+            <p class="text-slate-300 mb-6" id="t-pres-desc">Reseta pontos e clickers por um bônus PERMANENTE.</p>
             <div class="bg-slate-900 p-6 rounded-2xl mb-8 flex justify-around">
-                <div>
-                    <p class="text-xs text-slate-500 uppercase font-bold" id="t-pres-current">Bônus Atual</p>
-                    <p id="pres-curr-val" class="text-2xl font-bold">x1.0</p>
-                </div>
+                <div><p class="text-xs text-slate-500 uppercase" id="t-pres-curr">Atual</p><p id="pres-curr-val" class="text-2xl font-bold">x1.0</p></div>
                 <div class="text-blue-500 flex items-center">➡️</div>
-                <div>
-                    <p class="text-xs text-slate-500 uppercase font-bold" id="t-pres-new">Novo Bônus</p>
-                    <p id="pres-new-val" class="text-2xl font-bold text-blue-400 italic">x2.0</p>
-                </div>
+                <div><p class="text-xs text-slate-500 uppercase" id="t-pres-new">Novo</p><p id="pres-new-val" class="text-2xl font-bold text-blue-400">x2.0</p></div>
             </div>
-
             <div class="flex gap-4">
-                <button onclick="closePrestigeModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 p-4 rounded-xl font-bold transition" id="t-cancel">Cancelar</button>
-                <button id="confirm-prestige-btn" onclick="doPrestige()" class="flex-1 bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg shadow-blue-500/20 disabled" id="t-confirm">Prestigiar</button>
+                <button onpointerdown="closePrestigeModal()" class="flex-1 bg-slate-700 p-4 rounded-xl font-bold" id="t-cancel">Cancelar</button>
+                <button id="confirm-prestige-btn" onpointerdown="doPrestige()" class="flex-1 bg-blue-600 p-4 rounded-xl font-bold disabled" id="t-confirm">Confirmar</button>
             </div>
-            <p id="prestige-warning" class="mt-4 text-xs text-red-400 font-bold hidden" id="t-pres-warning">Você precisa de pelo menos 1 milhão de pontos!</p>
         </div>
     </div>
 
     <script>
         const i18n = {
             pt: {
-                loginTitle: "Configurar Perfil",
-                startBtn: "Começar Jogo",
-                rank: "Recruta",
-                prestigeLabel: "Nível de Prestígio",
-                prestigeBtn: "Prestigiar",
-                editProfile: "Editar Perfil",
-                resetBtn: "Resetar Tudo",
-                unit: "PONTOS / SEG",
-                statClickers: "Clickers",
-                statPower: "Força",
-                upgradeTitle: "🚀 Melhorias",
-                presModalTitle: "Ascensão",
-                presModalDesc: "Você perderá pontos e clickers em troca de um bônus PERMANENTE.",
-                presCurrent: "Bônus Atual",
-                presNew: "Novo Bônus",
-                cancel: "Cancelar",
-                confirm: "Confirmar",
-                presWarning: "Necessário 1.000.000 de pontos!",
-                upgrades: [
-                    ["Overclock", "Aumenta a força dos clickers."],
-                    ["Sincronia Lunar", "Cliques manuais geram mais clickers."],
-                    ["Fábrica", "Gera clickers automaticamente."],
-                    ["Chip de Silício", "Clickers produzem +10% de bônus."],
-                    ["Crítico Quântico", "Chance de cliques valerem 10x."],
-                    ["Energia Solar", "Produção aumenta levemente ao logar."],
-                    ["Nanotecnologia", "Clickers ficam 20% mais baratos."],
-                    ["IA Avançada", "Auto-clicker inteligente."],
-                    ["Portal de Dados", "Multiplica produção global."],
-                    ["Matriz Infinita", "Clickers geram outros clickers."]
-                ]
+                loginTitle: "Configurar Perfil", startBtn: "Começar Jogo", rank: "Recruta", 
+                prestigeLabel: "Prestígio Normal", prestigeBtn: "Prestigiar", superLabel: "Prestígio Total",
+                editProfile: "Editar Perfil", resetBtn: "Resetar Tudo", unit: "PONTOS / SEG",
+                statClickers: "Clickers", statPower: "Força", presTitle: "Ascensão",
+                presDesc: "Reseta pontos e clickers por um bônus PERMANENTE.", presCurr: "Atual",
+                presNew: "Novo", cancel: "Cancelar", confirm: "Confirmar",
+                upgrades: {
+                    normal: [
+                        ["Overclock", "Aumenta a força dos clickers."], ["Sincronia Lunar", "Cliques manuais rendem mais."],
+                        ["Fábrica", "Gera clickers automaticamente."], ["Chip de Silício", "Bônus de produção +10%."],
+                        ["Crítico Quântico", "Chance de cliques 10x."], ["Energia Solar", "Produção passiva leve."],
+                        ["Nanotecnologia", "Clickers 20% mais baratos."], ["IA Avançada", "Auto-clicker inteligente."],
+                        ["Portal de Dados", "Multiplica produção global."], ["Matriz Infinita", "Clickers geram clickers."]
+                    ],
+                    elite: [
+                        ["Mina de Antimatéria", "Gera MUITOS clickers/seg."], ["Satélite de Comando", "Multiplica força base por 5."],
+                        ["Dobra Espacial", "Reduz tempo de espera global."], ["Cérebro Galáctico", "Bônus de prestígio +50%."],
+                        ["Singularidade", "Produção exponencial."]
+                    ],
+                    super: [
+                        ["Núcleo Eterno", "Produção base permanente."], ["Genética Ancestral", "Força de clique imutável."],
+                        ["Protocolo Ômega", "Clickers nunca morrem."], ["Voz do Vazio", "Mult. Super Prestígio +10%."],
+                        ["Deus da Máquina", "O auge da evolução."]
+                    ]
+                }
             },
             en: {
-                loginTitle: "Setup Profile",
-                startBtn: "Start Game",
-                rank: "Recruit",
-                prestigeLabel: "Prestige Level",
-                prestigeBtn: "Prestige",
-                editProfile: "Edit Profile",
-                resetBtn: "Reset All",
-                unit: "POINTS / SEC",
-                statClickers: "Clickers",
-                statPower: "Power",
-                upgradeTitle: "🚀 Upgrades",
-                presModalTitle: "Ascension",
-                presModalDesc: "You will lose points and clickers for a PERMANENT production bonus.",
-                presCurrent: "Current Bonus",
-                presNew: "New Bonus",
-                cancel: "Cancel",
-                confirm: "Confirm",
-                presWarning: "Need 1,000,000 points!",
-                upgrades: [
-                    ["Overclock", "Increase clicker strength."],
-                    ["Moon Sync", "Manual clicks yield more clickers."],
-                    ["Factory", "Auto-generate clickers."],
-                    ["Silicon Chip", "Clickers yield +10% bonus."],
-                    ["Quantum Crit", "Chance for 10x clicks."],
-                    ["Solar Energy", "Production increases on login."],
-                    ["Nanotech", "Clickers are 20% cheaper."],
-                    ["Advanced AI", "Smart auto-clicker."],
-                    ["Data Portal", "Multiplies global production."],
-                    ["Infinite Matrix", "Clickers generate clickers."]
-                ]
+                loginTitle: "Setup Profile", startBtn: "Start Game", rank: "Recruit", 
+                prestigeLabel: "Normal Prestige", prestigeBtn: "Prestige", superLabel: "Total Prestige",
+                editProfile: "Edit Profile", resetBtn: "Reset All", unit: "POINTS / SEC",
+                statClickers: "Clickers", statPower: "Power", presTitle: "Ascension",
+                presDesc: "Reset points and clickers for a PERMANENT bonus.", presCurr: "Current",
+                presNew: "New", cancel: "Cancel", confirm: "Confirm",
+                upgrades: {
+                    normal: [
+                        ["Overclock", "Increase clicker strength."], ["Moon Sync", "Manual clicks yield more."],
+                        ["Factory", "Auto-generate clickers."], ["Silicon Chip", "Production bonus +10%."],
+                        ["Quantum Crit", "Chance for 10x clicks."], ["Solar Energy", "Passive production."],
+                        ["Nanotech", "Clickers 20% cheaper."], ["Advanced AI", "Smart auto-clicker."],
+                        ["Data Portal", "Multiplies global production."], ["Infinite Matrix", "Clickers generate clickers."]
+                    ],
+                    elite: [
+                        ["Antimatter Mine", "Huge clicker generation."], ["Command Satellite", "5x base strength."],
+                        ["Warp Drive", "Reduces global cooldowns."], ["Galactic Brain", "Prestige bonus +50%."],
+                        ["Singularity", "Exponential production."]
+                    ],
+                    super: [
+                        ["Eternal Core", "Permanent base production."], ["Ancient DNA", "Immutable click strength."],
+                        ["Omega Protocol", "Clickers never die."], ["Void Voice", "Super Prestige Mult +10%."],
+                        ["Deus Ex Machina", "Peak evolution."]
+                    ]
+                }
             },
             es: {
-                loginTitle: "Configurar Perfil",
-                startBtn: "Empezar Juego",
-                rank: "Recluta",
-                prestigeLabel: "Nivel de Prestigio",
-                prestigeBtn: "Prestigio",
-                editProfile: "Editar Perfil",
-                resetBtn: "Reiniciar Todo",
-                unit: "PUNTOS / SEG",
-                statClickers: "Clickers",
-                statPower: "Fuerza",
-                upgradeTitle: "🚀 Mejoras",
-                presModalTitle: "Ascensión",
-                presModalDesc: "Perderás puntos y clickers a cambio de un bono PERMANENTE.",
-                presCurrent: "Bono Actual",
-                presNew: "Nuevo Bono",
-                cancel: "Cancelar",
-                confirm: "Confirmar",
-                presWarning: "¡Necesitas 1.000.000 de puntos!",
-                upgrades: [
-                    ["Overclock", "Mejora la fuerza de clickers."],
-                    ["Sincronía Lunar", "Clicks manuales dan más clickers."],
-                    ["Fábrica", "Genera clickers automáticamente."],
-                    ["Chip de Silicio", "Clickers dan +10% de bono."],
-                    ["Crítico Cuántico", "Probabilidad de 10x clicks."],
-                    ["Energía Solar", "Producción aumenta al entrar."],
-                    ["Nanotecnología", "Clickers son 20% más baratos."],
-                    ["IA Avanzada", "Auto-clicker inteligente."],
-                    ["Portal de Dados", "Multiplica produção global."],
-                    ["Matriz Infinita", "Clickers generan clickers."]
-                ]
+                loginTitle: "Configurar Perfil", startBtn: "Empezar", rank: "Recluta", 
+                prestigeLabel: "Prestigio Normal", prestigeBtn: "Prestigio", superLabel: "Prestigio Total",
+                editProfile: "Editar Perfil", resetBtn: "Reiniciar Todo", unit: "PONTOS / SEG",
+                statClickers: "Clickers", statPower: "Fuerza", presTitle: "Ascensión",
+                presDesc: "Reinicia puntos y clickers por un bono PERMANENTE.", presCurr: "Actual",
+                presNew: "Nuevo", cancel: "Cancelar", confirm: "Confirmar",
+                upgrades: {
+                    normal: [
+                        ["Overclock", "Mejora fuerza de clickers."], ["Sincronía Lunar", "Clicks rinden más."],
+                        ["Fábrica", "Genera clickers auto."], ["Chip de Silicio", "Bono producción +10%."],
+                        ["Crítico Cuántico", "Probabilidad 10x."], ["Energía Solar", "Producción pasiva."],
+                        ["Nanotecnología", "Clickers 20% baratos."], ["IA Avanzada", "Auto-clicker."],
+                        ["Portal de Datos", "Multiplica global."], ["Matriz Infinita", "Clickers generan clickers."]
+                    ],
+                    elite: [
+                        ["Mina Antimateria", "Muchos clickers/seg."], ["Satélite Comando", "Fuerza base x5."],
+                        ["Salto Espacial", "Reduce tiempos globales."], ["Cerebro Galáctico", "Bono prestigio +50%."],
+                        ["Singularidad", "Producción exponencial."]
+                    ],
+                    super: [
+                        ["Núcleo Eterno", "Producción permanente."], ["ADN Ancestral", "Fuerza inmutable."],
+                        ["Protocolo Omega", "Clickers inmortales."], ["Voz del Vacío", "Mult. Super Prestigio +10%."],
+                        ["Dios de la Máquina", "Cúspide evolutiva."]
+                    ]
+                }
             }
         };
 
-        let state = {
-            username: "Jogador",
-            avatar: "👤",
-            lang: "pt",
-            score: 0,
-            totalClickers: 0,
-            clickerPower: 1,
-            prestige: 0,
-            prestigeMultiplier: 1.0,
-            upgrades: new Array(10).fill(0),
-            lastTick: Date.now()
+        const upgradeData = {
+            normal: [
+                { base: 50, mult: 1.5 }, { base: 250, mult: 2.1 }, { base: 1000, mult: 1.6 },
+                { base: 5000, mult: 1.8 }, { base: 20000, mult: 2.5 }, { base: 100000, mult: 3.0 },
+                { base: 500000, mult: 1.4 }, { base: 2000000, mult: 2.0 }, { base: 10000000, mult: 5.0 },
+                { base: 50000000, mult: 10.0 }
+            ],
+            elite: [
+                { base: 1e9, mult: 2.5 }, { base: 1e10, mult: 3.0 }, { base: 1e11, mult: 4.0 },
+                { base: 5e11, mult: 5.0 }, { base: 1e12, mult: 10.0 }
+            ],
+            super: [
+                { base: 1e13, mult: 1.8 }, { base: 1e14, mult: 1.9 }, { base: 1e15, mult: 2.0 },
+                { base: 1e16, mult: 2.5 }, { base: 1e18, mult: 5.0 }
+            ]
         };
 
-        const config = {
-            baseCosts: [50, 250, 1000, 5000, 20000, 100000, 500000, 2000000, 10000000, 50000000],
-            multipliers: [1.5, 2.1, 1.6, 1.8, 2.5, 3.0, 1.4, 2.0, 5.0, 10.0]
+        let state = {
+            username: "Jogador", avatar: "👤", lang: "pt",
+            score: 0, totalClickers: 0, prestige: 0, prestigeMultiplier: 1.0,
+            superPrestige: 0, superMultiplier: 1.0,
+            upgrades: new Array(10).fill(0),
+            eliteUpgrades: new Array(5).fill(0),
+            superUpgrades: new Array(5).fill(0),
+            activeTab: 'normal', lastTick: Date.now()
         };
 
         function setLang(l) {
@@ -278,70 +273,115 @@
 
         function translateUI() {
             const t = i18n[state.lang];
-            const ids = ['t-login-title', 't-start-btn', 't-rank', 't-prestige-label', 't-prestige-btn', 't-edit-profile', 't-reset-btn', 't-unit', 't-stat-clickers', 't-stat-power', 't-upgrade-title', 't-pres-modal-title', 't-pres-modal-desc', 't-pres-current', 't-pres-new', 't-cancel', 't-confirm', 't-pres-warning'];
-            
-            ids.forEach(id => {
+            const map = {
+                't-login-title': 'loginTitle', 't-start-btn': 'startBtn', 't-rank': 'rank',
+                't-prestige-label': 'prestigeLabel', 't-prestige-btn': 'prestigeBtn', 't-super-label': 'superLabel',
+                't-edit-profile': 'editProfile', 't-reset-btn': 'resetBtn', 't-unit': 'unit',
+                't-stat-clickers': 'statClickers', 't-stat-power': 'statPower', 't-pres-title': 'presTitle',
+                't-pres-desc': 'presDesc', 't-pres-curr': 'presCurr', 't-pres-new': 'presNew',
+                't-cancel': 'cancel', 't-confirm': 'confirm'
+            };
+            for(let id in map) {
                 const el = document.getElementById(id);
-                if (el) el.innerText = t[id.replace('t-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase())];
-            });
-            
+                if(el) el.innerText = t[map[id]];
+            }
             renderUpgrades();
         }
 
         function saveProfile() {
-            const nameInput = document.getElementById('username-input').value;
-            const avatarInput = document.getElementById('avatar-input').value;
-            if(nameInput) state.username = nameInput;
-            if(avatarInput) state.avatar = avatarInput;
+            const name = document.getElementById('username-input').value;
+            const avatar = document.getElementById('avatar-input').value;
+            if(name) state.username = name;
+            if(avatar) state.avatar = avatar;
             
             document.getElementById('user-name').innerText = state.username;
-            const avatarDiv = document.getElementById('user-avatar');
-            if(state.avatar.includes('http')) {
-                avatarDiv.innerHTML = `<img src="${state.avatar}" class="w-full h-full object-cover">`;
-            } else {
-                avatarDiv.innerText = state.avatar || "👤";
-            }
+            const avDiv = document.getElementById('user-avatar');
             
+            const renderAvatar = (div, val) => {
+                if(val.startsWith('http')) {
+                    div.innerHTML = `<img src="${val}" class="w-full h-full object-cover">`;
+                } else {
+                    div.innerText = val || "👤";
+                }
+            };
+
+            renderAvatar(avDiv, state.avatar);
             document.getElementById('login-modal').classList.add('hidden');
             saveGame();
         }
 
+        function setTab(tab) {
+            state.activeTab = tab;
+            document.getElementById('tab-normal').classList.toggle('tab-active', tab === 'normal');
+            document.getElementById('tab-normal').classList.toggle('text-slate-500', tab !== 'normal');
+            document.getElementById('tab-elite').classList.toggle('tab-active', tab === 'elite');
+            document.getElementById('tab-elite').classList.toggle('text-slate-500', tab !== 'elite');
+            renderUpgrades();
+        }
+
         function renderUpgrades() {
             const container = document.getElementById('upgrades-container');
-            const t = i18n[state.lang];
-            
-            state.upgrades.forEach((level, i) => {
-                const cost = Math.floor(config.baseCosts[i] * Math.pow(config.multipliers[i], level));
-                let div = document.getElementById(`upgrade-btn-${i}`);
+            container.innerHTML = '';
+            const t = i18n[state.lang].upgrades;
+
+            if(state.activeTab === 'normal') {
+                renderSection("Melhorias", upgradeData.normal, state.upgrades, t.normal, 'n');
+            } else {
+                renderSection("Elite", upgradeData.elite, state.eliteUpgrades, t.elite, 'e');
+                renderSection("SUPER (Permanente)", upgradeData.super, state.superUpgrades, t.super, 's', true);
+            }
+        }
+
+        function renderSection(title, data, levels, texts, type, isSuper = false) {
+            const container = document.getElementById('upgrades-container');
+            const h = document.createElement('h3');
+            h.className = `text-xs font-black uppercase tracking-widest mb-2 mt-4 ${isSuper ? 'text-purple-400' : 'text-slate-500'}`;
+            h.innerText = title;
+            container.appendChild(h);
+
+            data.forEach((item, i) => {
+                const cost = Math.floor(item.base * Math.pow(item.mult, levels[i]));
+                const card = document.createElement('div');
+                const canAfford = state.score >= cost;
                 
-                if (!div) {
-                    div = document.createElement('div');
-                    div.id = `upgrade-btn-${i}`;
-                    // Atribui o clique diretamente ao container principal do upgrade
-                    div.onclick = (e) => {
-                        // Recalcula o custo no momento do clique para evitar bugs de dessincronização
-                        const currentCost = Math.floor(config.baseCosts[i] * Math.pow(config.multipliers[i], state.upgrades[i]));
-                        buyUpgrade(i, currentCost);
-                    };
-                    container.appendChild(div);
-                }
+                card.className = `upgrade-card p-4 rounded-xl border flex justify-between items-center mb-2 ${!canAfford ? 'disabled' : 'bg-slate-800/50 border-white/5 shadow-sm hover:border-blue-500/50'}`;
+                if(isSuper) card.classList.add('border-purple-500/20', 'bg-purple-900/10');
                 
-                div.className = `upgrade-card p-4 bg-slate-800/50 rounded-2xl border border-white/5 flex justify-between items-center cursor-pointer ${state.score < cost ? 'disabled' : ''}`;
-                
-                div.innerHTML = `
-                    <div class="flex-1 overflow-hidden pr-2">
-                        <p class="font-bold text-blue-400 text-sm md:text-base truncate">${t.upgrades[i][0]}</p>
-                        <p class="text-[10px] text-slate-400 leading-tight line-clamp-2">${t.upgrades[i][1]}</p>
-                        <p class="text-[10px] mt-1 font-mono text-blue-500 uppercase">Lvl ${level}</p>
+                card.innerHTML = `
+                    <div class="flex-1 pr-2">
+                        <p class="font-bold ${isSuper ? 'text-purple-300' : 'text-blue-400'} text-sm">${texts[i][0]}</p>
+                        <p class="text-[10px] text-slate-400 leading-tight">${texts[i][1]}</p>
+                        <p class="text-[10px] mt-1 font-mono text-blue-500">Lvl ${levels[i]}</p>
                     </div>
                     <div class="text-right shrink-0">
-                        <p class="font-black text-sm md:text-base text-white">${formatNum(cost)}</p>
+                        <p class="font-black text-sm text-white">${formatNum(cost)}</p>
                     </div>
                 `;
+                
+                // Usando pointerdown para clique instantâneo
+                card.onpointerdown = (e) => {
+                    e.stopPropagation();
+                    if(state.score >= cost) {
+                        card.classList.add('click-active');
+                        buyUpgrade(type, i, cost);
+                        setTimeout(() => card.classList.remove('click-active'), 100);
+                    }
+                };
+                container.appendChild(card);
             });
         }
 
+        function buyUpgrade(type, i, cost) {
+            state.score -= cost;
+            if(type === 'n') state.upgrades[i]++;
+            else if(type === 'e') state.eliteUpgrades[i]++;
+            else if(type === 's') state.superUpgrades[i]++;
+            updateUI();
+            saveGame();
+        }
+
         function formatNum(n) {
+            if (n >= 1e15) return (n/1e15).toFixed(2) + 'Q';
             if (n >= 1e12) return (n/1e12).toFixed(2) + 'T';
             if (n >= 1e9) return (n/1e9).toFixed(2) + 'B';
             if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
@@ -349,152 +389,143 @@
             return Math.floor(n);
         }
 
-        function buyUpgrade(index, cost) {
-            if(state.score >= cost) {
-                state.score -= cost;
-                state.upgrades[index]++;
-                applyUpgrades();
-                renderUpgrades();
-                updateUI();
-            }
+        function calculatePPS() {
+            let basePower = 1 + state.upgrades[0] + (state.eliteUpgrades[1] * 5);
+            let pps = (state.totalClickers * basePower);
+            pps *= (1 + (state.upgrades[3] * 0.1));
+            pps *= (1 + (state.eliteUpgrades[4] * 2)); 
+            return pps * state.prestigeMultiplier * state.superMultiplier;
         }
 
-        function applyUpgrades() {
-            state.clickerPower = 1 + state.upgrades[0]; 
+        function updateUI() {
+            const pps = calculatePPS();
+            document.getElementById('score-display').innerText = formatNum(state.score);
+            document.getElementById('pps-display').innerText = formatNum(pps);
+            document.getElementById('stat-count').innerText = formatNum(state.totalClickers);
+            document.getElementById('stat-power').innerText = formatNum(1 + state.upgrades[0] + (state.eliteUpgrades[1] * 5));
+            document.getElementById('prestige-val').innerText = state.prestige;
+            document.getElementById('prestige-mult-display').innerText = `Bônus: x${state.prestigeMultiplier.toFixed(1)}`;
+            document.getElementById('super-prestige-val').innerText = state.superPrestige;
+            document.getElementById('super-mult-display').innerText = `Mult. Global: x${state.superMultiplier.toFixed(1)}`;
+
+            const sBtn = document.getElementById('super-prestige-btn');
+            if(state.prestigeMultiplier >= 50) {
+                sBtn.classList.remove('disabled', 'opacity-50');
+                document.getElementById('super-req').innerText = "PRONTO!";
+            } else {
+                sBtn.classList.add('disabled', 'opacity-50');
+                document.getElementById('super-req').innerText = "Requer Mult. x50";
+            }
+
+            if(state.prestige > 0 || state.superPrestige > 0) {
+                document.getElementById('tab-elite').classList.remove('hidden');
+            }
+            renderUpgrades();
+        }
+
+        function openPrestigeModal() {
+            document.getElementById('pres-curr-val').innerText = `x${state.prestigeMultiplier.toFixed(1)}`;
+            const newMult = state.prestigeMultiplier + (state.score / 1000000);
+            document.getElementById('pres-new-val').innerText = `x${newMult.toFixed(1)}`;
+            const canPrestige = state.score >= 1000000;
+            document.getElementById('confirm-prestige-btn').classList.toggle('disabled', !canPrestige);
+            document.getElementById('prestige-modal').classList.remove('hidden');
+        }
+
+        function closePrestigeModal() { document.getElementById('prestige-modal').classList.add('hidden'); }
+
+        function doPrestige() {
+            if(state.score < 1000000) return;
+            state.prestigeMultiplier += (state.score / 1000000);
+            state.prestige++;
+            state.score = 0; state.totalClickers = 0;
+            state.upgrades = new Array(10).fill(0);
+            state.eliteUpgrades = new Array(5).fill(0);
+            closePrestigeModal();
+            updateUI();
+            saveGame();
+        }
+
+        function doSuperPrestige() {
+            if(state.prestigeMultiplier < 50) return;
+            state.superMultiplier += (state.prestigeMultiplier / 10);
+            state.superPrestige++;
+            state.score = 0; state.totalClickers = 0;
+            state.prestigeMultiplier = 1.0; state.prestige = 0;
+            state.upgrades = new Array(10).fill(0);
+            state.eliteUpgrades = new Array(5).fill(0);
+            updateUI();
+            saveGame();
         }
 
         function handleMainClick(e) {
-            const clickMult = 1 + state.upgrades[1]; 
-            let gain = clickMult;
-            
-            if(Math.random() < (state.upgrades[4] * 0.05)) {
-                gain *= 10;
-                createParticle(e.clientX, e.clientY, "CRITICAL!", "text-yellow-400 text-3xl");
-            }
-
-            state.totalClickers += gain;
-            createParticle(e.clientX, e.clientY, `+${formatNum(gain)} Clicker`, "text-blue-400");
-            
+            e.preventDefault();
             const btn = document.getElementById('main-clicker');
-            btn.classList.add('click-animation');
-            setTimeout(() => btn.classList.remove('click-animation'), 100);
+            btn.classList.add('click-active');
+            
+            const gain = (1 + state.upgrades[1] + (state.superUpgrades[1] * 10)) * state.superMultiplier;
+            state.totalClickers += gain;
+            
+            const x = e.clientX || (e.touches && e.touches[0].clientX);
+            const y = e.clientY || (e.touches && e.touches[0].clientY);
+            createParticle(x, y, `+${formatNum(gain)}`, "text-blue-400");
+            
             updateUI();
+            setTimeout(() => btn.classList.remove('click-active'), 50);
         }
 
-        function createParticle(x, y, text, colorClass) {
+        function createParticle(x, y, text, color) {
+            if(!x || !y) return;
             const p = document.createElement('div');
-            p.className = `particle ${colorClass}`;
-            p.style.left = (x - 20) + 'px';
-            p.style.top = (y - 20) + 'px';
+            p.className = `particle ${color}`;
+            p.style.left = x + 'px'; p.style.top = y + 'px';
             p.innerText = text;
             document.body.appendChild(p);
             setTimeout(() => p.remove(), 800);
         }
 
-        function openPrestigeModal() {
-            document.getElementById('pres-curr-val').innerText = `x${state.prestigeMultiplier.toFixed(1)}`;
-            document.getElementById('pres-new-val').innerText = `x${(state.prestigeMultiplier + (state.score / 1000000)).toFixed(1)}`;
-            
-            const canPrestige = state.score >= 1000000;
-            const confirmBtn = document.getElementById('confirm-prestige-btn');
-            const warning = document.getElementById('prestige-warning');
-            
-            if(canPrestige) {
-                confirmBtn.classList.remove('disabled', 'opacity-50');
-                warning.classList.add('hidden');
-            } else {
-                confirmBtn.classList.add('disabled', 'opacity-50');
-                warning.classList.remove('hidden');
+        function saveGame() { localStorage.setItem('clicker_evo_v4_luis', JSON.stringify(state)); }
+
+        function loadGame() {
+            const saved = localStorage.getItem('clicker_evo_v4_luis');
+            if(saved) {
+                state = { ...state, ...JSON.parse(saved) };
+                document.getElementById('user-name').innerText = state.username;
+                setLang(state.lang);
+                
+                const avDiv = document.getElementById('user-avatar');
+                const renderAvatar = (div, val) => {
+                    if(val.startsWith('http')) {
+                        div.innerHTML = `<img src="${val}" class="w-full h-full object-cover">`;
+                    } else {
+                        div.innerText = val || "👤";
+                    }
+                };
+                renderAvatar(avDiv, state.avatar);
             }
-            
-            document.getElementById('prestige-modal').classList.remove('hidden');
-        }
-
-        function closePrestigeModal() {
-            document.getElementById('prestige-modal').classList.add('hidden');
-        }
-
-        function doPrestige() {
-            if(state.score < 1000000) return;
-            const bonusEarned = state.score / 1000000;
-            state.prestigeMultiplier += bonusEarned;
-            state.prestige++;
-            resetGame(false); 
-            closePrestigeModal();
-            saveGame();
         }
 
         function resetGame(full) {
-            state.score = 0;
-            state.totalClickers = 0;
-            state.upgrades = new Array(10).fill(0);
-            state.clickerPower = 1;
-            
-            if(full) {
-                state.prestige = 0;
-                state.prestigeMultiplier = 1.0;
-                localStorage.removeItem('clicker_evo_save_v3');
+            if(confirm("Deseja resetar todo o seu progresso?")) {
+                localStorage.removeItem('clicker_evo_v4_luis');
                 location.reload();
             }
-            renderUpgrades();
-            updateUI();
         }
 
-        function saveGame() {
-            localStorage.setItem('clicker_evo_save_v3', JSON.stringify(state));
-        }
-
-        function loadGame() {
-            const saved = localStorage.getItem('clicker_evo_save_v3') || localStorage.getItem('clicker_evo_save_v2');
-            if(saved) {
-                const loaded = JSON.parse(saved);
-                state = { ...state, ...loaded };
-                setLang(state.lang);
-                saveProfile(); 
-                applyUpgrades();
-            }
-        }
-
-        function updateUI() {
-            document.getElementById('score-display').innerText = formatNum(state.score);
-            document.getElementById('pps-display').innerText = formatNum(state.totalClickers * state.clickerPower * state.prestigeMultiplier);
-            document.getElementById('stat-count').innerText = formatNum(state.totalClickers);
-            document.getElementById('stat-power').innerText = formatNum(state.clickerPower);
-            const pVal = document.getElementById('prestige-val');
-            if (pVal) pVal.innerText = state.prestige;
-            const pDesc = document.getElementById('t-prestige-desc');
-            if (pDesc) pDesc.innerText = `Multiplicador: x${state.prestigeMultiplier.toFixed(1)}`;
-            
-            renderUpgrades();
-        }
-
-        function init() {
+        window.onload = () => {
             loadGame();
-            const mainClicker = document.getElementById('main-clicker');
-            if (mainClicker) mainClicker.onclick = handleMainClick;
-            setInterval(saveGame, 10000);
-
-            function loop() {
+            const clicker = document.getElementById('main-clicker');
+            clicker.onpointerdown = handleMainClick;
+            
+            setInterval(() => {
                 const now = Date.now();
                 const dt = (now - state.lastTick) / 1000;
                 state.lastTick = now;
-
-                const pps = (state.totalClickers * state.clickerPower) * state.prestigeMultiplier;
-                state.score += pps * dt;
-
-                state.totalClickers += (state.upgrades[2] * 0.1) * dt;
-
-                if(state.upgrades[9] > 0) {
-                    state.totalClickers += (state.totalClickers * 0.01 * state.upgrades[9]) * dt;
-                }
-
+                state.score += calculatePPS() * dt;
+                state.totalClickers += (state.upgrades[2] * 0.1 + state.eliteUpgrades[0] * 10) * dt;
                 updateUI();
-                requestAnimationFrame(loop);
-            }
-            requestAnimationFrame(loop);
-        }
-
-        window.onload = init;
+            }, 100);
+        };
     </script>
 </body>
 </html>
