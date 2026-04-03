@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Clicker of Clickers - Evolution</title>
+    <title>Clicker of Clickers</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
@@ -16,7 +16,6 @@
             touch-action: manipulation;
         }
     
-        /* Animação de clique corrigida */
         .click-active { transform: scale(0.95) !important; transition: transform 0.05s; }
         
         .particle { position: absolute; pointer-events: none; animation: float-up 0.8s ease-out forwards; z-index: 100; font-weight: bold; }
@@ -28,7 +27,6 @@
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
-        /* Bloqueia interferência interna */
         .upgrade-card * { pointer-events: none; }
         
         .disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); pointer-events: none !important; }
@@ -46,6 +44,8 @@
 
         .tab-active { border-bottom: 3px solid #3b82f6; color: white; }
         .super-gradient { background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%); }
+
+        .backup-item:hover { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.4); }
     </style>
 </head>
 <body class="text-white">
@@ -67,6 +67,20 @@
             </div>
 
             <button onpointerdown="saveProfile()" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold uppercase transition" id="t-start-btn">Começar Jogo</button>
+        </div>
+    </div>
+
+    <!-- Backup Modal -->
+    <div id="backup-modal" class="fixed inset-0 z-[120] modal-bg flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 p-6 rounded-3xl w-full max-w-lg border border-slate-700 shadow-2xl flex flex-col max-h-[80vh]">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black uppercase tracking-tighter" id="t-backup-title">Backups Recentes</h2>
+                <button onpointerdown="closeBackupModal()" class="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div id="backup-list" class="space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                <!-- Itens de backup injetados via JS -->
+            </div>
+            <p class="text-[10px] text-slate-500 mt-4 text-center uppercase tracking-widest" id="t-backup-footer">Backups automáticos a cada 5 minutos (Máx 20)</p>
         </div>
     </div>
 
@@ -97,6 +111,10 @@
                 <p id="super-req" class="text-[9px] text-white/60 mt-2 text-center italic">Requer Mult. x50</p>
             </div>
 
+            <button onpointerdown="openBackupModal()" class="w-full bg-slate-800 hover:bg-slate-700 p-3 rounded-xl text-xs font-bold transition uppercase border border-white/5 flex items-center justify-center gap-2">
+                <span>💾</span> <span id="t-backup-btn-label">Backups de Dados</span>
+            </button>
+
             <div class="mt-auto space-y-2">
                 <button onpointerdown="document.getElementById('login-modal').classList.remove('hidden')" class="w-full text-xs text-slate-500 hover:text-white transition" id="t-edit-profile">Editar Perfil</button>
                 <button onpointerdown="resetGame(true)" class="w-full text-xs text-red-900 hover:text-red-500 transition" id="t-reset-btn">Resetar Tudo</button>
@@ -126,8 +144,8 @@
         <!-- Upgrades Panel -->
         <div class="w-full lg:w-[400px] bg-slate-900/80 border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col lg:h-full">
             <div class="flex border-b border-white/10 shrink-0">
-                <button onpointerdown="setTab('normal')" id="tab-normal" class="flex-1 p-4 font-bold text-sm uppercase tracking-wider tab-active">Normal</button>
-                <button onpointerdown="setTab('elite')" id="tab-elite" class="flex-1 p-4 font-bold text-sm uppercase tracking-wider text-slate-500 hidden">Elite & Super</button>
+                <button onpointerdown="setTab('normal')" id="tab-normal" class="flex-1 p-4 font-bold text-sm uppercase tracking-wider tab-active" id="t-tab-normal-label">Normal</button>
+                <button onpointerdown="setTab('elite')" id="tab-elite" class="flex-1 p-4 font-bold text-sm uppercase tracking-wider text-slate-500 hidden" id="t-tab-elite-label">Elite & Super</button>
             </div>
             <div id="upgrades-container" class="p-6 flex flex-col gap-3 overflow-y-auto scrollable-area flex-1"></div>
         </div>
@@ -159,6 +177,16 @@
                 statClickers: "Clickers", statPower: "Força", presTitle: "Ascensão",
                 presDesc: "Reseta pontos e clickers por um bônus PERMANENTE.", presCurr: "Atual",
                 presNew: "Novo", cancel: "Cancelar", confirm: "Confirmar",
+                backupTitle: "Backups Recentes", backupBtnLabel: "Backups de Dados",
+                backupFooter: "Backups automáticos a cada 5 minutos (Máx 20)",
+                backupEmpty: "Nenhum backup disponível ainda...",
+                superReq: "Requer Mult. x50",
+                superReady: "PRONTO!",
+                placeholderName: "Seu nome...",
+                placeholderAvatar: "URL da foto ou Emoji...",
+                secNormal: "Melhorias",
+                secElite: "Elite",
+                secSuper: "SUPER (Permanente)",
                 upgrades: {
                     normal: [
                         ["Overclock", "Aumenta a força dos clickers."], ["Sincronia Lunar", "Cliques manuais rendem mais."],
@@ -186,6 +214,16 @@
                 statClickers: "Clickers", statPower: "Power", presTitle: "Ascension",
                 presDesc: "Reset points and clickers for a PERMANENT bonus.", presCurr: "Current",
                 presNew: "New", cancel: "Cancel", confirm: "Confirm",
+                backupTitle: "Recent Backups", backupBtnLabel: "Data Backups",
+                backupFooter: "Auto-backups every 5 minutes (Max 20)",
+                backupEmpty: "No backups available yet...",
+                superReq: "Requires x50 Mult.",
+                superReady: "READY!",
+                placeholderName: "Your name...",
+                placeholderAvatar: "Photo URL or Emoji...",
+                secNormal: "Upgrades",
+                secElite: "Elite",
+                secSuper: "SUPER (Permanent)",
                 upgrades: {
                     normal: [
                         ["Overclock", "Increase clicker strength."], ["Moon Sync", "Manual clicks yield more."],
@@ -213,6 +251,16 @@
                 statClickers: "Clickers", statPower: "Fuerza", presTitle: "Ascensión",
                 presDesc: "Reinicia puntos y clickers por un bono PERMANENTE.", presCurr: "Actual",
                 presNew: "Nuevo", cancel: "Cancelar", confirm: "Confirmar",
+                backupTitle: "Copias Recientes", backupBtnLabel: "Copias de Seguridad",
+                backupFooter: "Copias automáticas cada 5 min (Máx 20)",
+                backupEmpty: "No hay copias disponibles aún...",
+                superReq: "Requiere Mult. x50",
+                superReady: "¡LISTO!",
+                placeholderName: "Tu nombre...",
+                placeholderAvatar: "URL de foto o Emoji...",
+                secNormal: "Mejoras",
+                secElite: "Elite",
+                secSuper: "SÚPER (Permanente)",
                 upgrades: {
                     normal: [
                         ["Overclock", "Mejora fuerza de clickers."], ["Sincronía Lunar", "Clicks rinden más."],
@@ -259,8 +307,11 @@
             upgrades: new Array(10).fill(0),
             eliteUpgrades: new Array(5).fill(0),
             superUpgrades: new Array(5).fill(0),
-            activeTab: 'normal', lastTick: Date.now()
+            activeTab: 'normal', lastTick: Date.now(),
+            lastBackup: Date.now()
         };
+
+        let backups = [];
 
         function setLang(l) {
             state.lang = l;
@@ -279,13 +330,19 @@
                 't-edit-profile': 'editProfile', 't-reset-btn': 'resetBtn', 't-unit': 'unit',
                 't-stat-clickers': 'statClickers', 't-stat-power': 'statPower', 't-pres-title': 'presTitle',
                 't-pres-desc': 'presDesc', 't-pres-curr': 'presCurr', 't-pres-new': 'presNew',
-                't-cancel': 'cancel', 't-confirm': 'confirm'
+                't-cancel': 'cancel', 't-confirm': 'confirm', 't-backup-title': 'backupTitle',
+                't-backup-btn-label': 'backupBtnLabel', 't-backup-footer': 'backupFooter'
             };
             for(let id in map) {
                 const el = document.getElementById(id);
                 if(el) el.innerText = t[map[id]];
             }
-            renderUpgrades();
+
+            // Traduzir placeholders
+            document.getElementById('username-input').placeholder = t.placeholderName;
+            document.getElementById('avatar-input').placeholder = t.placeholderAvatar;
+
+            updateUI(); // Atualiza textos dinâmicos como o requisito do Super Prestígio
         }
 
         function saveProfile() {
@@ -295,19 +352,20 @@
             if(avatar) state.avatar = avatar;
             
             document.getElementById('user-name').innerText = state.username;
-            const avDiv = document.getElementById('user-avatar');
-            
-            const renderAvatar = (div, val) => {
-                if(val.startsWith('http')) {
-                    div.innerHTML = `<img src="${val}" class="w-full h-full object-cover">`;
-                } else {
-                    div.innerText = val || "👤";
-                }
-            };
-
-            renderAvatar(avDiv, state.avatar);
+            updateAvatarDisplay();
             document.getElementById('login-modal').classList.add('hidden');
             saveGame();
+        }
+
+        function updateAvatarDisplay(divId = 'user-avatar', val = state.avatar) {
+            const avDiv = document.getElementById(divId);
+            if(!avDiv) return;
+            if(val.startsWith('http')) {
+                avDiv.innerHTML = `<img src="${val}" class="w-full h-full object-cover">`;
+            } else {
+                avDiv.innerHTML = "";
+                avDiv.innerText = val || "👤";
+            }
         }
 
         function setTab(tab) {
@@ -322,13 +380,13 @@
         function renderUpgrades() {
             const container = document.getElementById('upgrades-container');
             container.innerHTML = '';
-            const t = i18n[state.lang].upgrades;
+            const t = i18n[state.lang];
 
             if(state.activeTab === 'normal') {
-                renderSection("Melhorias", upgradeData.normal, state.upgrades, t.normal, 'n');
+                renderSection(t.secNormal, upgradeData.normal, state.upgrades, t.upgrades.normal, 'n');
             } else {
-                renderSection("Elite", upgradeData.elite, state.eliteUpgrades, t.elite, 'e');
-                renderSection("SUPER (Permanente)", upgradeData.super, state.superUpgrades, t.super, 's', true);
+                renderSection(t.secElite, upgradeData.elite, state.eliteUpgrades, t.upgrades.elite, 'e');
+                renderSection(t.secSuper, upgradeData.super, state.superUpgrades, t.upgrades.super, 's', true);
             }
         }
 
@@ -358,7 +416,6 @@
                     </div>
                 `;
                 
-                // Usando pointerdown para clique instantâneo
                 card.onpointerdown = (e) => {
                     e.stopPropagation();
                     if(state.score >= cost) {
@@ -399,6 +456,8 @@
 
         function updateUI() {
             const pps = calculatePPS();
+            const t = i18n[state.lang];
+
             document.getElementById('score-display').innerText = formatNum(state.score);
             document.getElementById('pps-display').innerText = formatNum(pps);
             document.getElementById('stat-count').innerText = formatNum(state.totalClickers);
@@ -411,10 +470,10 @@
             const sBtn = document.getElementById('super-prestige-btn');
             if(state.prestigeMultiplier >= 50) {
                 sBtn.classList.remove('disabled', 'opacity-50');
-                document.getElementById('super-req').innerText = "PRONTO!";
+                document.getElementById('super-req').innerText = t.superReady;
             } else {
                 sBtn.classList.add('disabled', 'opacity-50');
-                document.getElementById('super-req').innerText = "Requer Mult. x50";
+                document.getElementById('super-req').innerText = t.superReq;
             }
 
             if(state.prestige > 0 || state.superPrestige > 0) {
@@ -484,30 +543,116 @@
             setTimeout(() => p.remove(), 800);
         }
 
-        function saveGame() { localStorage.setItem('clicker_evo_v4_luis', JSON.stringify(state)); }
+        // --- SISTEMA DE BACKUPS ---
+        
+        function openBackupModal() {
+            const list = document.getElementById('backup-list');
+            const t = i18n[state.lang];
+            list.innerHTML = "";
+            
+            if(backups.length === 0) {
+                list.innerHTML = `<p class="text-slate-500 text-center py-8">${t.backupEmpty}</p>`;
+            } else {
+                const sorted = [...backups].sort((a,b) => b.timestamp - a.timestamp);
+                
+                sorted.forEach((b, idx) => {
+                    const item = document.createElement('div');
+                    item.className = "backup-item p-4 rounded-2xl border border-slate-700 flex items-center gap-4 transition cursor-pointer";
+                    
+                    const date = new Date(b.timestamp).toLocaleTimeString();
+                    const day = new Date(b.timestamp).toLocaleDateString();
+                    
+                    item.innerHTML = `
+                        <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden shrink-0" id="av-back-${idx}">👤</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold text-sm truncate">${b.username}</p>
+                            <p class="text-[10px] text-slate-400">${day} às ${date}</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-xs font-black text-blue-400">${formatNum(b.score)} pts</p>
+                            <p class="text-[9px] text-slate-500 uppercase">Mult: x${b.prestigeMultiplier.toFixed(1)}</p>
+                        </div>
+                    `;
+                    
+                    item.onpointerdown = () => restoreBackup(b.timestamp);
+                    list.appendChild(item);
+                    updateAvatarDisplay(`av-back-${idx}`, b.avatar);
+                });
+            }
+            
+            document.getElementById('backup-modal').classList.remove('hidden');
+        }
+
+        function closeBackupModal() {
+            document.getElementById('backup-modal').classList.add('hidden');
+        }
+
+        function createBackup() {
+            const newBackup = {
+                timestamp: Date.now(),
+                username: state.username,
+                avatar: state.avatar,
+                score: state.score,
+                totalClickers: state.totalClickers,
+                prestige: state.prestige,
+                prestigeMultiplier: state.prestigeMultiplier,
+                superPrestige: state.superPrestige,
+                superMultiplier: state.superMultiplier,
+                upgrades: [...state.upgrades],
+                eliteUpgrades: [...state.eliteUpgrades],
+                superUpgrades: [...state.superUpgrades]
+            };
+            
+            backups.unshift(newBackup);
+            if(backups.length > 20) backups.pop();
+            
+            localStorage.setItem('clicker_evo_backups_luis', JSON.stringify(backups));
+            state.lastBackup = Date.now();
+        }
+
+        function restoreBackup(timestamp) {
+            const b = backups.find(x => x.timestamp === timestamp);
+            if(!b) return;
+            
+            if(confirm("Deseja restaurar este salvamento? O progresso atual será perdido.")) {
+                state = { ...state, ...JSON.parse(JSON.stringify(b)) };
+                state.lastTick = Date.now();
+                state.lastBackup = Date.now();
+                
+                document.getElementById('user-name').innerText = state.username;
+                updateAvatarDisplay();
+                translateUI();
+                updateUI();
+                closeBackupModal();
+                saveGame();
+            }
+        }
+
+        // --- SALVAMENTO E CARREGAMENTO ---
+
+        function saveGame() { 
+            localStorage.setItem('clicker_evo_v4_luis', JSON.stringify(state)); 
+        }
 
         function loadGame() {
             const saved = localStorage.getItem('clicker_evo_v4_luis');
             if(saved) {
                 state = { ...state, ...JSON.parse(saved) };
                 document.getElementById('user-name').innerText = state.username;
-                setLang(state.lang);
-                
-                const avDiv = document.getElementById('user-avatar');
-                const renderAvatar = (div, val) => {
-                    if(val.startsWith('http')) {
-                        div.innerHTML = `<img src="${val}" class="w-full h-full object-cover">`;
-                    } else {
-                        div.innerText = val || "👤";
-                    }
-                };
-                renderAvatar(avDiv, state.avatar);
+                updateAvatarDisplay();
+            }
+            setLang(state.lang); // Garante que a UI carregue no idioma certo
+            
+            const savedBackups = localStorage.getItem('clicker_evo_backups_luis');
+            if(savedBackups) {
+                backups = JSON.parse(savedBackups);
             }
         }
 
         function resetGame(full) {
             if(confirm("Deseja resetar todo o seu progresso?")) {
                 localStorage.removeItem('clicker_evo_v4_luis');
+                localStorage.removeItem('clicker_evo_backups_luis');
                 location.reload();
             }
         }
@@ -521,8 +666,14 @@
                 const now = Date.now();
                 const dt = (now - state.lastTick) / 1000;
                 state.lastTick = now;
+                
                 state.score += calculatePPS() * dt;
                 state.totalClickers += (state.upgrades[2] * 0.1 + state.eliteUpgrades[0] * 10) * dt;
+                
+                if(now - state.lastBackup >= 300000) {
+                    createBackup();
+                }
+                
                 updateUI();
             }, 100);
         };
